@@ -1,1071 +1,258 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>2ГИС API Карт</title>
+<script>
+  const pricing = {
+    A: { 14: 43200, 30: 72000 },
+    B: { 14: 36000, 30: 60000 },
+    C: { 14: 30000, 30: 50000 }
+  };
 
-  <script src="https://mapgl.2gis.com/api/js/v1"></script>
-  <script src="https://maps.api.2gis.ru/2.0/loader.js"></script>
+  let lastDefaultIsochrones = null;
 
-  <style>
-    :root {
-      --bg: #07101f;
-      --bg-soft: #0f172a;
-      --surface: rgba(15, 23, 42, 0.82);
-      --surface-2: rgba(30, 41, 59, 0.9);
-      --surface-3: rgba(51, 65, 85, 0.9);
-      --text: #f8fafc;
-      --muted: #cbd5e1;
-      --accent: #38bdf8;
-      --accent-2: #22c55e;
-      --warn: #f59e0b;
-      --border: rgba(255, 255, 255, 0.08);
-      --shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
-      --panel-glow: 0 0 0 1px rgba(56, 189, 248, 0.18), 0 10px 30px rgba(56, 189, 248, 0.08);
+  function formatPrice(value) {
+    return new Intl.NumberFormat('ru-RU').format(Math.round(value)) + ' ₽';
+  }
+
+  function getTierLabel(tier) {
+    if (tier === 'A') return 'Тир A';
+    if (tier === 'B') return 'Тир B';
+    return 'Тир C';
+  }
+
+  function getDefaultIsochrones(period) {
+    if (period === 14) return 140;
+    if (period === 30) return 300;
+    return 0;
+  }
+
+  function syncIsochronesWithPeriod(force = false) {
+    const period = parseInt(document.getElementById('period').value, 10);
+    const isochronesInput = document.getElementById('isochrones');
+    const newDefault = getDefaultIsochrones(period);
+    const currentValueRaw = isochronesInput.value.trim();
+    const currentValue = currentValueRaw === '' ? null : parseInt(currentValueRaw, 10);
+
+    const shouldReplace =
+      force ||
+      currentValueRaw === '' ||
+      currentValue === lastDefaultIsochrones;
+
+    if (shouldReplace) {
+      isochronesInput.value = newDefault;
     }
 
-    body.light {
-      --bg: #eef5ff;
-      --bg-soft: #ffffff;
-      --surface: rgba(255, 255, 255, 0.88);
-      --surface-2: rgba(248, 250, 252, 0.95);
-      --surface-3: rgba(241, 245, 249, 0.98);
-      --text: #0f172a;
-      --muted: #475569;
-      --accent: #0284c7;
-      --accent-2: #16a34a;
-      --warn: #d97706;
-      --border: rgba(15, 23, 42, 0.08);
-      --shadow: 0 16px 40px rgba(2, 8, 23, 0.08);
-      --panel-glow: 0 0 0 1px rgba(2, 132, 199, 0.18), 0 10px 30px rgba(2, 132, 199, 0.06);
+    lastDefaultIsochrones = newDefault;
+  }
+
+  function getScenarioCoefficient(totalScenarios) {
+    if (totalScenarios === 2) return 0.25;
+    if (totalScenarios === 3) return 0.475;
+    if (totalScenarios === 4) return 0.7;
+    return null;
+  }
+
+  function getCitiesDiscount(totalExtraCities) {
+    if (totalExtraCities <= 0) return 1;
+    if (totalExtraCities === 1) return 1;
+    if (totalExtraCities >= 2 && totalExtraCities <= 3) return 0.9;
+    if (totalExtraCities >= 4 && totalExtraCities <= 6) return 0.7;
+    if (totalExtraCities >= 7 && totalExtraCities <= 10) return 0.6;
+    return 0.6;
+  }
+
+  function calculateIsoPrice(extraIsochrones, period) {
+    if (extraIsochrones <= 0) return 0;
+
+    const extraPerDay = extraIsochrones / period;
+    let isoRate = 0;
+
+    if (extraPerDay >= 10 && extraPerDay < 20) {
+      isoRate = 30;
+    } else if (extraPerDay >= 20 && extraPerDay < 50) {
+      isoRate = 20;
+    } else if (extraPerDay >= 50) {
+      isoRate = 10;
+    } else if (extraPerDay > 0 && extraPerDay < 10) {
+      isoRate = 30;
     }
 
-    * {
-      box-sizing: border-box;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
-
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent 25%),
-        radial-gradient(circle at top right, rgba(34, 197, 94, 0.1), transparent 25%),
-        linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 100%);
-      transition: background 0.3s ease, color 0.3s ease;
-    }
-
-    nav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      backdrop-filter: blur(12px);
-      background: color-mix(in srgb, var(--surface-2) 92%, transparent);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .nav-inner {
-      max-width: 1240px;
-      margin: 0 auto;
-      padding: 16px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    .nav-brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-weight: 700;
-    }
-
-    .brand-icon {
-      width: 38px;
-      height: 38px;
-      border-radius: 12px;
-      display: grid;
-      place-items: center;
-      background: linear-gradient(135deg, rgba(56,189,248,0.22), rgba(34,197,94,0.18));
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow);
-      font-size: 18px;
-    }
-
-    .nav-links {
-      display: flex;
-      gap: 18px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .nav-links a {
-      color: var(--text);
-      text-decoration: none;
-      transition: 0.2s ease;
-      font-size: 14px;
-    }
-
-    .nav-links a:hover {
-      color: var(--accent);
-    }
-
-    .container {
-      max-width: 1240px;
-      margin: 36px auto 60px;
-      padding: 0 20px;
-    }
-
-    .hero {
-      display: grid;
-      grid-template-columns: 1.2fr 0.8fr;
-      gap: 22px;
-      align-items: stretch;
-      margin-bottom: 28px;
-    }
-
-    .hero-main,
-    .hero-side {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-      padding: 24px;
-      backdrop-filter: blur(12px);
-    }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(56, 189, 248, 0.12);
-      color: var(--accent);
-      border: 1px solid rgba(56, 189, 248, 0.22);
-      padding: 7px 11px;
-      border-radius: 999px;
-      font-size: 13px;
-      margin-bottom: 14px;
-    }
-
-    .hero h1 {
-      margin: 0 0 12px;
-      font-size: 42px;
-      line-height: 1.12;
-      letter-spacing: -0.02em;
-    }
-
-    .hero p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.7;
-    }
-
-    .hero-actions {
-      margin-top: 22px;
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .mini-stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      height: 100%;
-    }
-
-    .mini-card {
-      background: var(--surface-3);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 16px;
-      transition: 0.2s ease;
-    }
-
-    .mini-card:hover {
-      transform: translateY(-2px);
-    }
-
-    .mini-card .label {
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-
-    .mini-card .value {
-      font-size: 18px;
-      font-weight: 700;
-      word-break: break-word;
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-      padding: 24px;
-      margin-bottom: 28px;
-      backdrop-filter: blur(12px);
-    }
-
-    .card-header {
-      display: flex;
-      gap: 16px;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 18px;
-    }
-
-    .card-title {
-      margin: 0;
-      color: var(--accent);
-      font-size: 24px;
-    }
-
-    .card-subtitle {
-      color: var(--muted);
-      font-size: 14px;
-      margin-top: 4px;
-    }
-
-    .toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 20px;
-    }
-
-    .toolbar-left,
-    .toolbar-right {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: center;
-    }
-
-    button {
-      border: none;
-      border-radius: 14px;
-      padding: 11px 16px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: 0.2s ease;
-      font-size: 14px;
-    }
-
-    button:hover {
-      transform: translateY(-1px);
-    }
-
-    button.primary {
-      background: linear-gradient(135deg, var(--accent), #60a5fa);
-      color: white;
-      box-shadow: 0 8px 20px rgba(56, 189, 248, 0.2);
-    }
-
-    button.secondary {
-      background: var(--surface-3);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-
-    button.success {
-      background: linear-gradient(135deg, var(--accent-2), #4ade80);
-      color: white;
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 14px;
-      margin-bottom: 20px;
-    }
-
-    .stat-box {
-      background: var(--surface-3);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 14px 16px;
-      transition: 0.2s ease;
-    }
-
-    .stat-box:hover {
-      transform: translateY(-2px);
-    }
-
-    .stat-label {
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-
-    .stat-value {
-      font-size: 16px;
-      font-weight: 700;
-      word-break: break-word;
-    }
-
-    .maps-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-
-    .map-panel {
-      background: rgba(2, 8, 23, 0.18);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 14px;
-      transition: 0.25s ease;
-    }
-
-    body.light .map-panel {
-      background: rgba(255,255,255,0.5);
-    }
-
-    .map-panel:hover {
-      transform: translateY(-3px);
-      box-shadow: var(--shadow);
-    }
-
-    .map-panel.active {
-      box-shadow: var(--panel-glow);
-      border-color: rgba(56, 189, 248, 0.3);
-    }
-
-    .map-panel h3 {
-      margin: 0 0 12px;
-      font-size: 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .map-title-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .map-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--muted);
-      background: var(--surface-3);
-      padding: 5px 9px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      white-space: nowrap;
-    }
-
-    .map {
-      width: 100%;
-      height: 430px;
-      border-radius: 14px;
-      overflow: hidden;
-      background: #0b1220;
-    }
-
-    .hint {
-      margin-top: 10px;
-      font-size: 14px;
-      color: var(--muted);
-    }
-
-    .search-bar {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 12px;
-      margin-top: 16px;
-    }
-
-    .search-bar input {
-      width: 100%;
-      background: var(--surface-3);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 12px 14px;
-      outline: none;
-      font-size: 14px;
-    }
-
-    .search-bar input::placeholder {
-      color: var(--muted);
-    }
-
-    .legend {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
-    }
-
-    .legend-card {
-      background: var(--surface-3);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 18px;
-      transition: 0.2s ease;
-    }
-
-    .legend-card:hover {
-      transform: translateY(-3px);
-    }
-
-    .legend-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 14px;
-      display: grid;
-      place-items: center;
-      font-size: 20px;
-      margin-bottom: 12px;
-      background: rgba(56, 189, 248, 0.12);
-      border: 1px solid var(--border);
-    }
-
-    .legend-card h3 {
-      margin: 0 0 10px;
-      font-size: 18px;
-    }
-
-    .legend-card p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.65;
-      font-size: 14px;
-    }
-
-    .static-image {
-      width: 100%;
-      border-radius: 14px;
-      margin-top: 14px;
-      display: block;
-      border: 1px solid var(--border);
-    }
-
-    .static-url {
-      margin-top: 14px;
-      padding: 13px 14px;
-      border-radius: 14px;
-      background: var(--surface-3);
-      border: 1px solid var(--border);
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.6;
-      word-break: break-all;
-    }
-
-    footer {
-      max-width: 1240px;
-      margin: 0 auto 40px;
-      padding: 0 20px;
-    }
-
-    .footer-inner {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 18px 20px;
-      color: var(--muted);
-      display: flex;
-      justify-content: space-between;
-      gap: 14px;
-      flex-wrap: wrap;
-    }
-
-    @media (max-width: 980px) {
-      .hero {
-        grid-template-columns: 1fr;
-      }
-
-      .maps-row,
-      .legend,
-      .stats {
-        grid-template-columns: 1fr;
-      }
-
-      .map {
-        height: 340px;
-      }
-
-      .hero h1 {
-        font-size: 32px;
-      }
-
-      .search-bar {
-        grid-template-columns: 1fr;
+    return extraIsochrones * isoRate;
+  }
+
+  function getCalculationData() {
+    const cityTier = document.getElementById('cityTier').value;
+    const period = parseInt(document.getElementById('period').value, 10);
+    const scenarios = parseInt(document.getElementById('scenarios').value, 10) || 2;
+    const rubrics = parseInt(document.getElementById('rubrics').value, 10) || 0;
+    const isochrones = parseInt(document.getElementById('isochrones').value, 10) || 0;
+
+    const extraCitiesA = parseInt(document.getElementById('extraCitiesA').value, 10) || 0;
+    const extraCitiesB = parseInt(document.getElementById('extraCitiesB').value, 10) || 0;
+    const extraCitiesC = parseInt(document.getElementById('extraCitiesC').value, 10) || 0;
+
+    const safeScenarios = Math.min(5, Math.max(2, scenarios));
+    const safeRubrics = Math.max(0, rubrics);
+    const safeIsochrones = Math.max(0, isochrones);
+    const safeExtraCitiesA = Math.max(0, extraCitiesA);
+    const safeExtraCitiesB = Math.max(0, extraCitiesB);
+    const safeExtraCitiesC = Math.max(0, extraCitiesC);
+
+    const basePrice = pricing[cityTier][period];
+
+    const includedScenarios = 2;
+    const extraScenarios = Math.max(0, safeScenarios - includedScenarios);
+    const scenariosPrice = basePrice * 0.35 * extraScenarios;
+
+    const includedRubrics = 10;
+    const extraRubrics = Math.max(0, safeRubrics - includedRubrics);
+    let rubricsPrice = 0;
+
+    if (extraRubrics > 0) {
+      rubricsPrice = extraRubrics * 500;
+      if (rubricsPrice >= 10000) {
+        rubricsPrice = 10000;
       }
     }
-  </style>
-</head>
-<body>
-  <nav>
-    <div class="nav-inner">
-      <div class="nav-brand">
-        <div class="brand-icon">🗺️</div>
-        <div>2ГИС API Карт</div>
-      </div>
 
-      <div class="nav-links">
-        <a href="index.html">Главная</a>
-        <a href="search.html">Поиск</a>
-        <a href="navigation.html">Навигация</a>
-        <a href="#maps">Карты</a>
-        <a href="#legend">Описание</a>
-        <a href="#static">Static API</a>
-      </div>
-    </div>
-  </nav>
+    const includedIsochrones = 10 * period;
+    const extraIsochrones = Math.max(0, safeIsochrones - includedIsochrones);
+    const isoPrice = calculateIsoPrice(extraIsochrones, period);
 
-  <div class="container">
-    <section class="hero">
-      <div class="hero-main">
-        <span class="badge">✨ 2ГИС API Карт</span>
-        <h1>Синхронизация векторной и растровой карты</h1>
-        <p>
-          Демонстрационная страница с интерактивными картами 2ГИС: векторное и растровое
-          отображение работают рядом, а статическая карта может обновляться по текущему центру.
-        </p>
+    const totalExtraCities = safeExtraCitiesA + safeExtraCitiesB + safeExtraCitiesC;
+    const scenarioCoefficient = getScenarioCoefficient(safeScenarios);
+    const citiesDiscount = getCitiesDiscount(totalExtraCities);
 
-        <div class="hero-actions">
-          <button class="primary" id="heroResetBtn">Сбросить к Новосибирску</button>
-          <button class="secondary" id="themeToggleBtn">Тема: тёмная</button>
-        </div>
-      </div>
+    const rawCitiesBaseSum =
+      (pricing.A[period] * safeExtraCitiesA) +
+      (pricing.B[period] * safeExtraCitiesB) +
+      (pricing.C[period] * safeExtraCitiesC);
 
-      <div class="hero-side">
-        <div class="mini-stats">
-          <div class="mini-card">
-            <div class="label">Город по умолчанию</div>
-            <div class="value">Новосибирск</div>
-          </div>
-          <div class="mini-card">
-            <div class="label">Начальный zoom</div>
-            <div class="value">13</div>
-          </div>
-          <div class="mini-card">
-            <div class="label">Синхронизация</div>
-            <div class="value" id="heroSyncValue">Включена</div>
-          </div>
-          <div class="mini-card">
-            <div class="label">Текущая тема</div>
-            <div class="value" id="heroThemeValue">Тёмная</div>
-          </div>
-        </div>
-      </div>
-    </section>
+    let citiesPrice = 0;
+    let warningMessage = '';
 
-    <section class="card" id="maps">
-      <div class="card-header">
-        <div>
-          <h2 class="card-title">Интерактивные карты</h2>
-          <div class="card-subtitle">Управление картами, поиск точки и отображение текущего состояния.</div>
-        </div>
-      </div>
+    if (totalExtraCities > 0) {
+      if (scenarioCoefficient === null) {
+        warningMessage = 'Для расчёта дополнительных городов при 5 сценариях коэффициент не указан в документации. Поэтому доплата за города не рассчитана.';
+      } else {
+        citiesPrice = rawCitiesBaseSum * scenarioCoefficient * citiesDiscount;
+      }
+    }
 
-      <div class="toolbar">
-        <div class="toolbar-left">
-          <button id="resetBtn" class="primary">Сбросить к Новосибирску</button>
-          <button id="syncToggleBtn" class="secondary">Синхронизация: ВКЛ</button>
-          <button id="markersToggleBtn" class="secondary">Маркеры: ВКЛ</button>
-          <button id="themeToggleBtn2" class="secondary">Сменить тему</button>
-        </div>
+    const total = basePrice + scenariosPrice + rubricsPrice + isoPrice + citiesPrice;
 
-        <div class="toolbar-right">
-          <button id="updateStaticBtn" class="success">Обновить статическую карту</button>
-        </div>
-      </div>
-
-      <div class="stats">
-        <div class="stat-box">
-          <div class="stat-label">Текущий центр</div>
-          <div class="stat-value" id="centerValue">82.92043, 55.03020</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Текущий масштаб</div>
-          <div class="stat-value" id="zoomValue">13</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Активная карта</div>
-          <div class="stat-value" id="activeMapValue">—</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Последнее действие</div>
-          <div class="stat-value" id="lastActionValue">Инициализация</div>
-        </div>
-      </div>
-
-      <div class="search-bar">
-        <input
-          id="locationInput"
-          type="text"
-          placeholder="Введите координаты в формате: 82.92043, 55.030199"
-        />
-        <button id="goToLocationBtn" class="secondary">Перейти к точке</button>
-      </div>
-
-      <div class="maps-row" style="margin-top:20px;">
-        <div class="map-panel" id="vectorPanel">
-          <h3>
-            <span class="map-title-left">
-              <span>🧭</span>
-              <span>Векторная карта (MapTiles)</span>
-            </span>
-            <span class="map-badge">Vector</span>
-          </h3>
-          <div id="map-vector" class="map"></div>
-          <div class="hint">Формат координат: [lng, lat]</div>
-        </div>
-
-        <div class="map-panel" id="rasterPanel">
-          <h3>
-            <span class="map-title-left">
-              <span>🗺️</span>
-              <span>Растровая карта (Raster Tiles)</span>
-            </span>
-            <span class="map-badge">Raster</span>
-          </h3>
-          <div id="map-raster" class="map"></div>
-          <div class="hint">Формат координат: [lat, lng]</div>
-        </div>
-      </div>
-    </section>
-
-    <section class="card" id="legend">
-      <div class="card-header">
-        <div>
-          <h2 class="card-title">Краткое описание карт</h2>
-          <div class="card-subtitle">Разница между векторной, растровой и статической картой на этой странице.</div>
-        </div>
-      </div>
-
-      <div class="legend">
-        <div class="legend-card">
-          <div class="legend-icon">🧭</div>
-          <h3>Векторная карта (MapTiles)</h3>
-          <p>
-            Векторное отображение карты. Подходит для современной интерактивности,
-            плавной работы и расширяемых сценариев интерфейса.
-          </p>
-        </div>
-
-        <div class="legend-card">
-          <div class="legend-icon">🗺️</div>
-          <h3>Растровая карта (Raster Tiles)</h3>
-          <p>
-            Классический растровый тайловый вариант. Удобен для наглядного сравнения
-            с векторной картой на одной странице.
-          </p>
-        </div>
-
-        <div class="legend-card">
-          <div class="legend-icon">🖼️</div>
-          <h3>Статическая карта (Static API)</h3>
-          <p>
-            Возвращает готовое изображение карты по параметрам центра, масштаба и размера.
-            Подходит для предпросмотра, отчетов и встраивания без интерактива.
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <section class="card" id="static">
-      <div class="card-header">
-        <div>
-          <h2 class="card-title">Статическая карта (Static API)</h2>
-          <div class="card-subtitle">Картинка формируется по текущему центру и масштабу.</div>
-        </div>
-      </div>
-
-      <div class="toolbar" style="margin-bottom: 10px;">
-        <div class="toolbar-left">
-          <button id="copyStaticUrlBtn" class="secondary">Скопировать URL</button>
-        </div>
-      </div>
-
-      <img
-        id="staticMapImage"
-        class="static-image"
-        src="https://static.maps.2gis.com/1.0?center=82.92043,55.030199&zoom=13&size=1000x420&key=816c3158-de01-41bb-bef2-e8bc7749e48d"
-        alt="Статическая карта Новосибирска"
-      />
-
-      <div class="static-url" id="staticUrlBox">
-        https://static.maps.2gis.com/1.0?center=82.92043,55.030199&zoom=13&size=1000x420&key=816c3158-de01-41bb-bef2-e8bc7749e48d
-      </div>
-    </section>
-  </div>
-
-  <footer>
-    <div class="footer-inner">
-      <div>2ГИС API Карт — демонстрационная страница векторной, растровой и статической карты.</div>
-      <div>Powered by 2GIS API</div>
-    </div>
-  </footer>
-
-  <script>
-    const KEY = '816c3158-de01-41bb-bef2-e8bc7749e48d';
-    const STYLE = 'c080bb6a-8134-4993-93a1-5b4d8c36a59b';
-
-    const NSK = {
-      lng: 82.92043,
-      lat: 55.030199,
-      zoom: 13
+    return {
+      cityTier,
+      period,
+      scenarios: safeScenarios,
+      rubrics: safeRubrics,
+      isochrones: safeIsochrones,
+      basePrice,
+      extraScenarios,
+      scenariosPrice,
+      extraRubrics,
+      rubricsPrice,
+      includedIsochrones,
+      extraIsochrones,
+      isoPrice,
+      extraCitiesA: safeExtraCitiesA,
+      extraCitiesB: safeExtraCitiesB,
+      extraCitiesC: safeExtraCitiesC,
+      totalExtraCities,
+      scenarioCoefficient,
+      citiesDiscount,
+      rawCitiesBaseSum,
+      citiesPrice,
+      warningMessage,
+      total
     };
+  }
 
-    const resetBtn = document.getElementById('resetBtn');
-    const heroResetBtn = document.getElementById('heroResetBtn');
-    const syncToggleBtn = document.getElementById('syncToggleBtn');
-    const markersToggleBtn = document.getElementById('markersToggleBtn');
-    const updateStaticBtn = document.getElementById('updateStaticBtn');
-    const copyStaticUrlBtn = document.getElementById('copyStaticUrlBtn');
-    const themeToggleBtn = document.getElementById('themeToggleBtn');
-    const themeToggleBtn2 = document.getElementById('themeToggleBtn2');
-    const goToLocationBtn = document.getElementById('goToLocationBtn');
-    const locationInput = document.getElementById('locationInput');
+  function renderCalculation() {
+    const data = getCalculationData();
 
-    const centerValue = document.getElementById('centerValue');
-    const zoomValue = document.getElementById('zoomValue');
-    const activeMapValue = document.getElementById('activeMapValue');
-    const lastActionValue = document.getElementById('lastActionValue');
+    document.getElementById('basePrice').textContent = formatPrice(data.basePrice);
+    document.getElementById('scenariosPrice').textContent = formatPrice(data.scenariosPrice);
+    document.getElementById('rubricsPrice').textContent = formatPrice(data.rubricsPrice);
+    document.getElementById('isoPrice').textContent = formatPrice(data.isoPrice);
+    document.getElementById('citiesPrice').textContent = formatPrice(data.citiesPrice);
+    document.getElementById('totalPrice').textContent = formatPrice(data.total);
 
-    const vectorPanel = document.getElementById('vectorPanel');
-    const rasterPanel = document.getElementById('rasterPanel');
-
-    const staticMapImage = document.getElementById('staticMapImage');
-    const staticUrlBox = document.getElementById('staticUrlBox');
-
-    const heroSyncValue = document.getElementById('heroSyncValue');
-    const heroThemeValue = document.getElementById('heroThemeValue');
-
-    let syncEnabled = true;
-    let markersVisible = true;
-
-    function setLastAction(text) {
-      lastActionValue.textContent = text;
+    const warningBox = document.getElementById('warningBox');
+    if (warningBox) {
+      if (data.warningMessage) {
+        warningBox.style.display = 'block';
+        warningBox.textContent = data.warningMessage;
+      } else {
+        warningBox.style.display = 'none';
+        warningBox.textContent = '';
+      }
     }
 
-    function almostEqual(a, b, eps = 0.00001) {
-      return Math.abs(a - b) < eps;
+    document.getElementById('details').innerHTML = `
+      <strong>Пояснение расчёта:</strong><br>
+      • База для выбранного тира и срока: ${formatPrice(data.basePrice)}<br>
+      • Включено сценариев: 2, дополнительных: ${data.extraScenarios}<br>
+      • Доп. сценарии: 35% от Base за каждый<br>
+      • Включено рубрик: 10, дополнительных: ${data.extraRubrics}<br>
+      • Доп. рубрики: 500 ₽/шт, но максимум 10 000 ₽ как категория 2-го уровня<br>
+      • Включено зон доступности: ${data.includedIsochrones}<br>
+      • Доп. зон доступности: ${data.extraIsochrones}<br>
+      • Доп. городов Тир A: ${data.extraCitiesA}, Тир B: ${data.extraCitiesB}, Тир C: ${data.extraCitiesC}<br>
+      • Всего дополнительных городов: ${data.totalExtraCities}<br>
+      • Коэффициент сценариев для доп. городов: ${data.scenarioCoefficient !== null ? data.scenarioCoefficient : 'не указан в документации'}<br>
+      • Скидка по количеству доп. городов: ${data.totalExtraCities > 0 ? data.citiesDiscount : 1}
+    `;
+  }
+
+  async function copyCalculation() {
+    const data = getCalculationData();
+    const copyStatus = document.getElementById('copyStatus');
+
+    const lines = [
+      'Расчёт тарифа Base',
+      `Тир основного города: ${getTierLabel(data.cityTier)}`,
+      `Срок тарифа: ${data.period} дней`,
+      `Количество сценариев: ${data.scenarios}`,
+      `Количество рубрик: ${data.rubrics}`,
+      `Количество зон доступности: ${data.isochrones}`,
+      `Доп. города Тир A: ${data.extraCitiesA}`,
+      `Доп. города Тир B: ${data.extraCitiesB}`,
+      `Доп. города Тир C: ${data.extraCitiesC}`,
+      '',
+      `Базовая стоимость: ${formatPrice(data.basePrice)}`,
+      `Доплата за сценарии: ${formatPrice(data.scenariosPrice)}`,
+      `Доплата за рубрики: ${formatPrice(data.rubricsPrice)}`,
+      `Доплата за зоны доступности: ${formatPrice(data.isoPrice)}`,
+      `Доплата за дополнительные города: ${formatPrice(data.citiesPrice)}`,
+      `Итого: ${formatPrice(data.total)}`
+    ];
+
+    if (data.warningMessage) {
+      lines.push('', `Важно: ${data.warningMessage}`);
     }
 
-    function sameView(a, b) {
-      if (!a || !b) return false;
-      return (
-        almostEqual(a.lng, b.lng) &&
-        almostEqual(a.lat, b.lat) &&
-        Math.abs(a.zoom - b.zoom) < 0.01
-      );
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      copyStatus.textContent = 'Расчёт скопирован';
+      setTimeout(() => {
+        copyStatus.textContent = '';
+      }, 2500);
+    } catch (error) {
+      copyStatus.textContent = 'Не удалось скопировать';
     }
+  }
 
-    function getValidNumber(value) {
-      const n = Number(value);
-      return Number.isFinite(n) ? n : null;
-    }
+  document.querySelectorAll('input').forEach((el) => {
+    el.addEventListener('input', renderCalculation);
+  });
 
-    function normalizeMapglCenter(center) {
-      if (!center) return null;
+  document.getElementById('cityTier').addEventListener('change', renderCalculation);
 
-      if (Array.isArray(center) && center.length >= 2) {
-        return { lng: Number(center[0]), lat: Number(center[1]) };
-      }
+  document.getElementById('period').addEventListener('change', () => {
+    syncIsochronesWithPeriod(false);
+    renderCalculation();
+  });
 
-      if (typeof center.lng !== 'undefined' && typeof center.lat !== 'undefined') {
-        return { lng: Number(center.lng), lat: Number(center.lat) };
-      }
+  document.getElementById('copyBtn').addEventListener('click', copyCalculation);
 
-      if (typeof center.lon !== 'undefined' && typeof center.lat !== 'undefined') {
-        return { lng: Number(center.lon), lat: Number(center.lat) };
-      }
-
-      if (typeof center.x !== 'undefined' && typeof center.y !== 'undefined') {
-        return { lng: Number(center.x), lat: Number(center.y) };
-      }
-
-      return null;
-    }
-
-    function formatCoord(num) {
-      return Number(num).toFixed(5);
-    }
-
-    function updateStats(view, activeMapName) {
-      if (!view) return;
-      centerValue.textContent = `${formatCoord(view.lng)}, ${formatCoord(view.lat)}`;
-      zoomValue.textContent = Number(view.zoom).toFixed(2);
-      activeMapValue.textContent = activeMapName || '—';
-    }
-
-    function setActivePanel(panel) {
-      vectorPanel.classList.remove('active');
-      rasterPanel.classList.remove('active');
-
-      if (panel === 'vector') vectorPanel.classList.add('active');
-      if (panel === 'raster') rasterPanel.classList.add('active');
-    }
-
-    function buildStaticMapUrl(view) {
-      return `https://static.maps.2gis.com/1.0?center=${view.lng},${view.lat}&zoom=${Math.round(view.zoom)}&size=1000x420&key=${KEY}`;
-    }
-
-    function applyTheme(theme) {
-      document.body.classList.toggle('light', theme === 'light');
-      localStorage.setItem('demo-theme', theme);
-      heroThemeValue.textContent = theme === 'light' ? 'Светлая' : 'Тёмная';
-      themeToggleBtn.textContent = `Тема: ${theme === 'light' ? 'светлая' : 'тёмная'}`;
-      themeToggleBtn2.textContent = `Сменить тему`;
-    }
-
-    function toggleTheme() {
-      const current = document.body.classList.contains('light') ? 'light' : 'dark';
-      applyTheme(current === 'light' ? 'dark' : 'light');
-      setLastAction('Тема переключена');
-    }
-
-    const savedTheme = localStorage.getItem('demo-theme') || 'dark';
-    applyTheme(savedTheme);
-
-    const mapVector = new mapgl.Map('map-vector', {
-      center: [NSK.lng, NSK.lat],
-      zoom: NSK.zoom,
-      key: KEY,
-      style: STYLE
-    });
-
-    const vectorMarker = new mapgl.Marker(mapVector, {
-      coordinates: [NSK.lng, NSK.lat]
-    });
-
-    DG.then(function () {
-      const rasterMap = DG.map('map-raster', {
-        center: [NSK.lat, NSK.lng],
-        zoom: NSK.zoom
-      });
-
-      const rasterMarker = DG.marker([NSK.lat, NSK.lng]).addTo(rasterMap);
-
-      let lastVectorView = { ...NSK };
-      let lastRasterView = { ...NSK };
-      let lockVectorToRaster = false;
-      let lockRasterToVector = false;
-
-      function getVectorView() {
-        try {
-          const rawCenter = mapVector.getCenter();
-          const center = normalizeMapglCenter(rawCenter);
-          const zoom = getValidNumber(mapVector.getZoom());
-          if (!center || !Number.isFinite(center.lng) || !Number.isFinite(center.lat) || zoom === null) {
-            return null;
-          }
-          return { lng: center.lng, lat: center.lat, zoom };
-        } catch (e) {
-          return null;
-        }
-      }
-
-      function getRasterView() {
-        try {
-          const center = rasterMap.getCenter();
-          const zoom = getValidNumber(rasterMap.getZoom());
-          if (!center || typeof center.lng === 'undefined' || typeof center.lat === 'undefined' || zoom === null) {
-            return null;
-          }
-          return { lng: Number(center.lng), lat: Number(center.lat), zoom };
-        } catch (e) {
-          return null;
-        }
-      }
-
-      function applyToRaster(view) {
-        if (!view) return;
-        if (!Number.isFinite(view.lat) || !Number.isFinite(view.lng) || !Number.isFinite(view.zoom)) return;
-
-        lockRasterToVector = true;
-        rasterMap.setView([view.lat, view.lng], view.zoom, { animate: false });
-
-        setTimeout(() => {
-          lockRasterToVector = false;
-        }, 120);
-      }
-
-      function applyToVector(view) {
-        if (!view) return;
-        if (!Number.isFinite(view.lat) || !Number.isFinite(view.lng) || !Number.isFinite(view.zoom)) return;
-
-        lockVectorToRaster = true;
-        mapVector.setCenter([view.lng, view.lat]);
-        mapVector.setZoom(view.zoom);
-
-        setTimeout(() => {
-          lockVectorToRaster = false;
-        }, 120);
-      }
-
-      function updateFromVector() {
-        const vectorView = getVectorView();
-        if (!vectorView) return;
-
-        if (!sameView(vectorView, lastVectorView)) {
-          lastVectorView = vectorView;
-
-          updateStats(vectorView, 'Векторная');
-          setActivePanel('vector');
-          setLastAction('Перемещение векторной карты');
-
-          if (syncEnabled && !lockVectorToRaster) {
-            const rasterView = getRasterView();
-            if (!rasterView || !sameView(vectorView, rasterView)) {
-              applyToRaster(vectorView);
-              lastRasterView = { ...vectorView };
-            }
-          }
-        }
-      }
-
-      function updateFromRaster() {
-        const rasterView = getRasterView();
-        if (!rasterView) return;
-
-        if (!sameView(rasterView, lastRasterView)) {
-          lastRasterView = rasterView;
-
-          updateStats(rasterView, 'Растровая');
-          setActivePanel('raster');
-          setLastAction('Перемещение растровой карты');
-
-          if (syncEnabled && !lockRasterToVector) {
-            const vectorView = getVectorView();
-            if (!vectorView || !sameView(rasterView, vectorView)) {
-              applyToVector(rasterView);
-              lastVectorView = { ...rasterView };
-            }
-          }
-        }
-      }
-
-      function getCurrentViewForStatic() {
-        return getVectorView() || getRasterView() || { ...NSK };
-      }
-
-      function updateStaticMap() {
-        const view = getCurrentViewForStatic();
-        const url = buildStaticMapUrl(view);
-        staticMapImage.src = url;
-        staticUrlBox.textContent = url;
-        setLastAction('Статическая карта обновлена');
-      }
-
-      function resetToNsk() {
-        const resetView = { ...NSK };
-        applyToVector(resetView);
-        applyToRaster(resetView);
-        lastVectorView = { ...resetView };
-        lastRasterView = { ...resetView };
-        updateStats(resetView, '—');
-        setActivePanel(null);
-        setLastAction('Сброс к Новосибирску');
-      }
-
-      function parseCoordinates(input) {
-        const parts = input.split(',').map(v => v.trim());
-        if (parts.length !== 2) return null;
-
-        const lng = Number(parts[0]);
-        const lat = Number(parts[1]);
-
-        if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
-        return { lng, lat, zoom: getCurrentViewForStatic().zoom || NSK.zoom };
-      }
-
-      const syncInterval = setInterval(() => {
-        updateFromVector();
-        updateFromRaster();
-
-        const currentView = getVectorView() || getRasterView();
-        if (currentView) {
-          updateStats(currentView, activeMapValue.textContent);
-        }
-      }, 150);
-
-      resetBtn.addEventListener('click', resetToNsk);
-      heroResetBtn.addEventListener('click', resetToNsk);
-
-      syncToggleBtn.addEventListener('click', () => {
-        syncEnabled = !syncEnabled;
-        syncToggleBtn.textContent = `Синхронизация: ${syncEnabled ? 'ВКЛ' : 'ВЫКЛ'}`;
-        heroSyncValue.textContent = syncEnabled ? 'Включена' : 'Выключена';
-        setLastAction(`Синхронизация ${syncEnabled ? 'включена' : 'выключена'}`);
-      });
-
-      markersToggleBtn.addEventListener('click', () => {
-        markersVisible = !markersVisible;
-        markersToggleBtn.textContent = `Маркеры: ${markersVisible ? 'ВКЛ' : 'ВЫКЛ'}`;
-
-        const vectorEl = vectorMarker.getElement && vectorMarker.getElement();
-        if (vectorEl) {
-          vectorEl.style.display = markersVisible ? 'block' : 'none';
-        }
-
-        if (markersVisible) {
-          if (!rasterMap.hasLayer(rasterMarker)) rasterMarker.addTo(rasterMap);
-        } else {
-          if (rasterMap.hasLayer(rasterMarker)) rasterMap.removeLayer(rasterMarker);
-        }
-
-        setLastAction(`Маркеры ${markersVisible ? 'показаны' : 'скрыты'}`);
-      });
-
-      updateStaticBtn.addEventListener('click', updateStaticMap);
-
-      copyStaticUrlBtn.addEventListener('click', async () => {
-        try {
-          await navigator.clipboard.writeText(staticUrlBox.textContent);
-          setLastAction('URL статической карты скопирован');
-        } catch (e) {
-          setLastAction('Не удалось скопировать URL');
-        }
-      });
-
-      themeToggleBtn.addEventListener('click', toggleTheme);
-      themeToggleBtn2.addEventListener('click', toggleTheme);
-
-      goToLocationBtn.addEventListener('click', () => {
-        const parsed = parseCoordinates(locationInput.value);
-        if (!parsed) {
-          setLastAction('Некорректный формат координат');
-          return;
-        }
-
-        applyToVector(parsed);
-        applyToRaster(parsed);
-        lastVectorView = { ...parsed };
-        lastRasterView = { ...parsed };
-        updateStats(parsed, '—');
-        setActivePanel(null);
-        setLastAction('Переход к указанной точке');
-      });
-
-      updateStats({ ...NSK }, '—');
-      updateStaticMap();
-
-      window.addEventListener('beforeunload', () => {
-        clearInterval(syncInterval);
-      });
-    });
-  </script>
-</body>
-</html>
+  syncIsochronesWithPeriod(true);
+  renderCalculation();
+</script>
