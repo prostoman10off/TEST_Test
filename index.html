@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Калькулятор стоимости продукта</title>
+  <title>Калькулятор стоимости выборки</title>
   <style>
     :root {
       --dgis-green: #19c37d;
@@ -12,9 +12,10 @@
       --dgis-text: #1f2937;
       --dgis-muted: #6b7280;
       --dgis-border: #dfe7e3;
-      --dgis-bg: #f6faf8;
       --white: #ffffff;
       --danger: #e11d48;
+      --danger-bg: #fff1f2;
+      --danger-border: #fecdd3;
       --shadow: 0 10px 30px rgba(16, 24, 40, 0.08);
       --radius: 18px;
     }
@@ -31,7 +32,7 @@
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1240px;
       margin: 0 auto;
       padding: 32px 20px 48px;
     }
@@ -70,14 +71,19 @@
       color: var(--dgis-muted);
       font-size: 16px;
       line-height: 1.5;
-      max-width: 850px;
+      max-width: 880px;
     }
 
     .grid {
       display: grid;
-      grid-template-columns: 1.2fr 0.8fr;
+      grid-template-columns: 1.25fr 0.75fr;
       gap: 24px;
       align-items: start;
+    }
+
+    .left-column {
+      display: grid;
+      gap: 24px;
     }
 
     .card {
@@ -129,8 +135,7 @@
       font-weight: 600;
     }
 
-    input[type="number"],
-    select {
+    input[type="number"] {
       width: 100%;
       border: 1px solid var(--dgis-border);
       border-radius: 12px;
@@ -142,10 +147,66 @@
       transition: 0.2s ease;
     }
 
-    input[type="number"]:focus,
-    select:focus {
+    input[type="number"]:focus {
       border-color: var(--dgis-green);
       box-shadow: 0 0 0 4px rgba(25, 195, 125, 0.15);
+    }
+
+    .warning-box {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: var(--danger-bg);
+      border: 1px solid var(--danger-border);
+      color: var(--danger);
+      font-size: 14px;
+      font-weight: 700;
+      display: none;
+    }
+
+    .updates-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .update-card {
+      position: relative;
+      border: 1px solid var(--dgis-border);
+      border-radius: 16px;
+      background: #fafdfb;
+      padding: 14px;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .update-card:hover {
+      border-color: #bce8d1;
+      background: var(--dgis-green-soft);
+    }
+
+    .update-card input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .update-card.active {
+      border-color: var(--dgis-green);
+      background: var(--dgis-green-soft);
+      box-shadow: 0 0 0 3px rgba(25, 195, 125, 0.12);
+    }
+
+    .update-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .update-sub {
+      font-size: 13px;
+      color: var(--dgis-muted);
+      line-height: 1.4;
     }
 
     .checkbox-list {
@@ -190,9 +251,56 @@
       font-weight: 500;
     }
 
+    .formula-box {
+      background: linear-gradient(180deg, #f8fffb 0%, #f1fbf6 100%);
+      border: 1px solid #d7efe2;
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .formula-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #14532d;
+    }
+
+    .formula-main {
+      font-size: 16px;
+      font-weight: 800;
+      color: #111827;
+      margin-bottom: 10px;
+    }
+
+    .formula-example {
+      font-size: 14px;
+      color: var(--dgis-muted);
+      line-height: 1.5;
+    }
+
+    .standard-list {
+      margin: 0;
+      padding-left: 18px;
+      color: #374151;
+      line-height: 1.65;
+      font-size: 14px;
+    }
+
     .result-card {
       position: sticky;
       top: 20px;
+    }
+
+    .pill {
+      display: inline-block;
+      background: var(--dgis-green-soft);
+      color: var(--dgis-green-dark);
+      border: 1px solid #bdebd2;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 10px;
     }
 
     .price-main {
@@ -261,55 +369,7 @@
       line-height: 1.5;
     }
 
-    .pill {
-      display: inline-block;
-      background: var(--dgis-green-soft);
-      color: var(--dgis-green-dark);
-      border: 1px solid #bdebd2;
-      border-radius: 999px;
-      padding: 6px 10px;
-      font-size: 12px;
-      font-weight: 700;
-      margin-bottom: 10px;
-    }
-
-    .actions {
-      display: flex;
-      gap: 12px;
-      margin-top: 18px;
-      flex-wrap: wrap;
-    }
-
-    .btn {
-      border: 0;
-      border-radius: 12px;
-      padding: 12px 16px;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: 0.2s ease;
-    }
-
-    .btn-primary {
-      background: var(--dgis-green);
-      color: #fff;
-    }
-
-    .btn-primary:hover {
-      background: var(--dgis-green-dark);
-    }
-
-    .btn-secondary {
-      background: #eef7f2;
-      color: #135f43;
-      border: 1px solid #cae8d8;
-    }
-
-    .btn-secondary:hover {
-      background: #e3f5eb;
-    }
-
-    @media (max-width: 960px) {
+    @media (max-width: 980px) {
       .grid {
         grid-template-columns: 1fr;
       }
@@ -318,7 +378,8 @@
         position: static;
       }
 
-      .checkbox-list {
+      .checkbox-list,
+      .updates-grid {
         grid-template-columns: 1fr;
       }
 
@@ -333,57 +394,88 @@
     <div class="header">
       <div class="brand">
         <span class="brand-badge"></span>
-        <span><strong>2ГИС</strong> · Калькулятор стоимости продукта</span>
+        <span><strong>2ГИС</strong> · Калькулятор стоимости</span>
       </div>
-      <h1>Расчет стоимости выборки</h1>
+      <h1>Расчет стоимости выборки по организациям</h1>
       <div class="subtitle">
-        Базовая версия калькулятора по прайсу: стоимость зависит от количества строк, выбранного пакета обновлений и дополнительных данных. 
-        Это демо-основа, которую можно дальше адаптировать под точные тарифные колонки и бизнес-логику.
+        Стоимость рассчитывается автоматически по количеству строк, выбранному пакету обновлений и дополнительным данным.
       </div>
     </div>
 
     <div class="grid">
-      <div class="card">
-        <h2>Параметры расчета</h2>
+      <div class="left-column">
+        <div class="card">
+          <h2>Параметры расчета</h2>
 
-        <div class="section">
-          <div class="section-title">1. Базовый продукт</div>
-
-          <div class="field">
-            <label for="rows">Количество строк</label>
-            <input type="number" id="rows" min="1" value="1000" />
+          <div class="section">
+            <div class="section-title">1. Количество строк</div>
+            <div class="field">
+              <label for="rows">Количество организаций</label>
+              <input type="number" id="rows" min="1" value="597" />
+            </div>
+            <div class="warning-box" id="minWarning">
+              Не достигнут минимальный порог — расчет доступен от 597 организаций.
+            </div>
           </div>
 
-          <div class="field">
-            <label for="productType">Тип продукта</label>
-            <select id="productType">
-              <option value="org" selected>Выборка по организациям — стандартный набор данных</option>
-            </select>
+          <div class="section">
+            <div class="section-title">2. Обновления</div>
+            <div class="updates-grid" id="updatesGrid">
+              <label class="update-card active">
+                <input type="radio" name="updates" value="0" checked />
+                <div class="update-title">Без обновлений</div>
+                <div class="update-sub">Только текущая выборка</div>
+              </label>
+
+              <label class="update-card">
+                <input type="radio" name="updates" value="0.7" />
+                <div class="update-title">Ежемесячные</div>
+                <div class="update-sub">11 обновлений · +70% к стоимости</div>
+              </label>
+
+              <label class="update-card">
+                <input type="radio" name="updates" value="0.5" />
+                <div class="update-title">Ежеквартальные</div>
+                <div class="update-sub">3 обновления · +50% к стоимости</div>
+              </label>
+
+              <label class="update-card">
+                <input type="radio" name="updates" value="0.3" />
+                <div class="update-title">Ежегодные</div>
+                <div class="update-sub">1 обновление · +30% к стоимости</div>
+              </label>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">3. Дополнительные данные</div>
+            <div class="checkbox-list" id="extrasList"></div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">4. Формула расчета</div>
+            <div class="formula-box">
+              <div class="formula-title">Расчет выполняется по формуле</div>
+              <div class="formula-main">(база × строки) + (допы × строки) + обновления</div>
+              <div class="formula-example" id="formulaText">
+                — 
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="section">
-          <div class="section-title">2. Обновления</div>
-
-          <div class="field">
-            <label for="updates">Пакет обновлений</label>
-            <select id="updates">
-              <option value="0" selected>Без обновлений</option>
-              <option value="0.7">Ежемесячные (11 обновлений) +70%</option>
-              <option value="0.5">Ежеквартальные (3 обновления) +50%</option>
-              <option value="0.3">Ежегодные (1 обновление) +30%</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-title">3. Дополнительные данные</div>
-          <div class="checkbox-list" id="extrasList"></div>
-        </div>
-
-        <div class="actions">
-          <button class="btn btn-primary" onclick="calculate()">Пересчитать</button>
-          <button class="btn btn-secondary" onclick="resetForm()">Сбросить</button>
+        <div class="card">
+          <h2>Что входит в стандартный набор данных</h2>
+          <ul class="standard-list">
+            <li>Фактическое название организации</li>
+            <li>Город</li>
+            <li>Адрес: индекс, улица, номер дома, офис, этаж</li>
+            <li>Контактные данные: телефон, email, сайт</li>
+            <li>Принадлежность к рубрике</li>
+            <li>Количество филиалов по городу</li>
+            <li>Время работы</li>
+            <li>Способы оплаты</li>
+          </ul>
         </div>
       </div>
 
@@ -392,56 +484,254 @@
 
         <div class="price-main">
           <div class="caption">Итоговая стоимость</div>
-          <div class="value" id="totalPrice">0 ₽</div>
-          <div class="sub" id="pricePerRowSummary">—</div>
+          <div class="value" id="totalPrice">—</div>
+          <div class="sub" id="pricePerRowSummary">Введите параметры для расчета</div>
         </div>
 
         <div class="summary">
           <div class="summary-row">
             <span>Количество строк</span>
-            <span id="summaryRows">0</span>
+            <span id="summaryRows">—</span>
           </div>
 
           <div class="summary-row">
             <span>Базовая цена за строку</span>
-            <span id="summaryBaseRate">0 ₽</span>
+            <span id="summaryBaseRate">—</span>
           </div>
 
           <div class="summary-row">
             <span>Стоимость базовой выборки</span>
-            <span id="summaryBaseTotal">0 ₽</span>
+            <span id="summaryBaseTotal">—</span>
           </div>
 
           <div class="summary-row">
             <span>Доп. данные за строку</span>
-            <span id="summaryExtrasRate">0 ₽</span>
+            <span id="summaryExtrasRate">—</span>
           </div>
 
           <div class="summary-row">
             <span>Стоимость доп. данных</span>
-            <span id="summaryExtrasTotal">0 ₽</span>
+            <span id="summaryExtrasTotal">—</span>
           </div>
 
           <div class="summary-row">
             <span>Обновления</span>
-            <span id="summaryUpdates">Без обновлений</span>
+            <span id="summaryUpdates">—</span>
           </div>
 
           <div class="summary-row">
-            <strong>Итого до минимального порога</strong>
-            <strong id="summaryBeforeMin">0 ₽</strong>
+            <strong>Итого до минимального заказа</strong>
+            <strong id="summaryBeforeMin">—</strong>
           </div>
 
           <div class="summary-row">
             <strong>Итого к оплате</strong>
-            <strong id="summaryFinal">0 ₽</strong>
+            <strong id="summaryFinal">—</strong>
           </div>
         </div>
 
         <div class="hint" id="minOrderHint">
-          Минимальный заказ будет применен автоматически по правилам прайса.
+          Минимальный порог расчета: 597 организаций.
         </div>
 
         <div class="footer-note">
-          Основа расчета собрана по тексту прайса: диапазоны строк, коэффициенты обновлений и доп. атрибуты на строку.
-          Если нужно, следующим шаг
+          Основа собрана по прайсу от 01.02.2025. Если захотите, следующим сообщением я могу сразу добавить
+          точную разбивку по отдельным сценариям: организации / адресный план / POI.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const MIN_ROWS = 597;
+
+    const baseTariffs = [
+      { min: 0, rate: 25.3, label: "менее 1 000" },
+      { min: 1000, rate: 16.445, label: "более 1 000" },
+      { min: 3000, rate: 13.11, label: "более 3 000" },
+      { min: 5000, rate: 10.12, label: "более 5 000" },
+      { min: 7000, rate: 8.625, label: "более 7 000" },
+      { min: 10000, rate: 7.59, label: "более 10 000" },
+      { min: 25000, rate: 6.325, label: "более 25 000" },
+      { min: 50000, rate: 5.06, label: "более 50 000" },
+      { min: 100000, rate: 3.795, label: "более 100 000" }
+    ];
+
+    const extras = [
+      { id: "coords", name: "Координаты X,Y", rate: 3.795 },
+      { id: "fias", name: "ФИАС", rate: 4.0 },
+      { id: "employees", name: "Количество сотрудников", rate: 4.3 },
+      { id: "dateAdded", name: "Дата добавления карточки в 2ГИС", rate: 3.3 },
+      { id: "providers", name: "Провайдеры", rate: 1.1 },
+      { id: "companyType", name: "Тип предприятия (опт/розн.)", rate: 1.1 },
+      { id: "entrances", name: "Количество подъездов", rate: 3.3 },
+      { id: "flats", name: "Количество квартир", rate: 1.1 },
+      { id: "floorsByParts", name: "Этажность по компонентам", rate: 1.1 },
+      { id: "wallMaterial", name: "Материал стен", rate: 1.1 },
+      { id: "maxFloors", name: "Этажность максимальная", rate: 3.3 },
+      { id: "serviceOrg", name: "Обслуживающие организации", rate: 3.3 }
+    ];
+
+    function formatCurrency(value) {
+      return new Intl.NumberFormat('ru-RU', {
+        style: 'currency',
+        currency: 'RUB',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(value);
+    }
+
+    function getBaseRate(rows) {
+      let current = baseTariffs[0];
+      for (let i = 0; i < baseTariffs.length; i++) {
+        if (rows >= baseTariffs[i].min) {
+          current = baseTariffs[i];
+        }
+      }
+      return current;
+    }
+
+    function getMinimumOrder(rows) {
+      if (rows >= 597) return 20000;
+      if (rows >= 345) return 10000;
+      return 5000;
+    }
+
+    function renderExtras() {
+      const container = document.getElementById("extrasList");
+      container.innerHTML = "";
+
+      extras.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "checkbox-item";
+        div.innerHTML = `
+          <label>
+            <input type="checkbox" class="extra-checkbox" value="${item.id}">
+            <span>
+              ${item.name}
+              <span class="checkbox-meta">+ ${item.rate} ₽ за строку</span>
+            </span>
+          </label>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function updateActiveCards() {
+      document.querySelectorAll(".update-card").forEach(card => {
+        const input = card.querySelector('input[type="radio"]');
+        card.classList.toggle("active", input.checked);
+      });
+    }
+
+    function resetSummaryForInvalid() {
+      document.getElementById("totalPrice").textContent = "—";
+      document.getElementById("pricePerRowSummary").textContent = "Не достигнут минимальный порог";
+      document.getElementById("summaryRows").textContent = "—";
+      document.getElementById("summaryBaseRate").textContent = "—";
+      document.getElementById("summaryBaseTotal").textContent = "—";
+      document.getElementById("summaryExtrasRate").textContent = "—";
+      document.getElementById("summaryExtrasTotal").textContent = "—";
+      document.getElementById("summaryUpdates").textContent = "—";
+      document.getElementById("summaryBeforeMin").textContent = "—";
+      document.getElementById("summaryFinal").textContent = "—";
+      document.getElementById("formulaText").textContent = "Расчет станет доступен после достижения минимального порога в 597 организаций.";
+      document.getElementById("minOrderHint").innerHTML = `Минимальный порог расчета: <strong>${MIN_ROWS}</strong> организаций.`;
+    }
+
+    function calculate() {
+      updateActiveCards();
+
+      const rows = Math.max(1, parseInt(document.getElementById("rows").value, 10) || 1);
+      const warning = document.getElementById("minWarning");
+
+      if (rows < MIN_ROWS) {
+        warning.style.display = "block";
+        resetSummaryForInvalid();
+        return;
+      } else {
+        warning.style.display = "block";
+        warning.textContent = "Минимальный порог достигнут.";
+        warning.style.background = "#ecfdf3";
+        warning.style.borderColor = "#bbf7d0";
+        warning.style.color = "#15803d";
+      }
+
+      const updatesPercent = parseFloat(
+        document.querySelector('input[name="updates"]:checked')?.value || "0"
+      );
+
+      const baseRateObj = getBaseRate(rows);
+      const baseRate = baseRateObj.rate;
+      const baseTotal = rows * baseRate;
+
+      const checkedExtras = Array.from(document.querySelectorAll(".extra-checkbox:checked"));
+      let extrasRate = 0;
+      checkedExtras.forEach(checkbox => {
+        const extra = extras.find(item => item.id === checkbox.value);
+        if (extra) extrasRate += extra.rate;
+      });
+
+      const extrasTotal = rows * extrasRate;
+      const subtotal = baseTotal + extrasTotal;
+      const updatesCost = subtotal * updatesPercent;
+      const totalBeforeMin = subtotal + updatesCost;
+      const minOrder = getMinimumOrder(rows);
+      const finalTotal = Math.max(totalBeforeMin, minOrder);
+
+      let updateLabel = "Без обновлений";
+      if (updatesPercent === 0.7) updateLabel = "Ежемесячные (+70%)";
+      if (updatesPercent === 0.5) updateLabel = "Ежеквартальные (+50%)";
+      if (updatesPercent === 0.3) updateLabel = "Ежегодные (+30%)";
+
+      document.getElementById("totalPrice").textContent = formatCurrency(finalTotal);
+      document.getElementById("pricePerRowSummary").textContent =
+        `Базовый тариф: ${formatCurrency(baseRate)} за строку · Диапазон: ${baseRateObj.label}`;
+
+      document.getElementById("summaryRows").textContent = rows.toLocaleString("ru-RU");
+      document.getElementById("summaryBaseRate").textContent = formatCurrency(baseRate);
+      document.getElementById("summaryBaseTotal").textContent = formatCurrency(baseTotal);
+      document.getElementById("summaryExtrasRate").textContent = formatCurrency(extrasRate);
+      document.getElementById("summaryExtrasTotal").textContent = formatCurrency(extrasTotal);
+      document.getElementById("summaryUpdates").textContent =
+        updatesPercent ? `${updateLabel} · ${formatCurrency(updatesCost)}` : updateLabel;
+      document.getElementById("summaryBeforeMin").textContent = formatCurrency(totalBeforeMin);
+      document.getElementById("summaryFinal").textContent = formatCurrency(finalTotal);
+
+      document.getElementById("formulaText").textContent =
+        `(${formatCurrency(baseRate)} × ${rows.toLocaleString("ru-RU")}) + ` +
+        `(${formatCurrency(extrasRate)} × ${rows.toLocaleString("ru-RU")}) + ` +
+        `${formatCurrency(updatesCost)} = ${formatCurrency(finalTotal)}`;
+
+      document.getElementById("minOrderHint").innerHTML =
+        `Минимальный заказ для текущего объема: <strong>${formatCurrency(minOrder)}</strong>.`;
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      renderExtras();
+      updateActiveCards();
+
+      document.getElementById("rows").addEventListener("input", function () {
+        const warning = document.getElementById("minWarning");
+        warning.style.background = "var(--danger-bg)";
+        warning.style.borderColor = "var(--danger-border)";
+        warning.style.color = "var(--danger)";
+        warning.textContent = "Не достигнут минимальный порог — расчет доступен от 597 организаций.";
+        calculate();
+      });
+
+      document.querySelectorAll('input[name="updates"]').forEach(input => {
+        input.addEventListener("change", calculate);
+      });
+
+      document.getElementById("extrasList").addEventListener("change", function (e) {
+        if (e.target.classList.contains("extra-checkbox")) {
+          calculate();
+        }
+      });
+
+      calculate();
+    });
+  </script>
+</body>
+</html>
