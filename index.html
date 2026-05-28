@@ -609,9 +609,10 @@
 
       { id: "entrances", name: "Количество подъездов", type: "fixed", rate: 3.3 },
       { id: "flats", name: "Количество квартир", type: "fixed", rate: 3.3 },
-      { id: "floorsByParts", name: "Этажность по компонентам", type: "fixed", rate: 3.3 },
-      { id: "wallMaterial", name: "Материал стен", type: "fixed", rate: 3.3 },
 
+      { id: "floorsByParts", name: "Этажность по компонентам", type: "fixed", rate: 3.3, hidden: true },
+
+      { id: "wallMaterial", name: "Материал стен", type: "fixed", rate: 3.3 },
       { id: "maxFloors", name: "Этажность максимальная", type: "fixed", rate: 3.3 },
       { id: "serviceOrg", name: "Обслуживающие организации", type: "fixed", rate: 3.3 }
     ];
@@ -623,6 +624,10 @@
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
       }).format(value);
+    }
+
+    function getVisibleExtras() {
+      return extras.filter(extra => !extra.hidden);
     }
 
     function getBaseRate(rows) {
@@ -663,7 +668,7 @@
       const container = document.getElementById("extrasList");
       container.innerHTML = "";
 
-      extras.forEach(item => {
+      getVisibleExtras().forEach(item => {
         const div = document.createElement("div");
         div.className = "checkbox-item";
         div.innerHTML = `
@@ -705,7 +710,7 @@
     }
 
     function resetExtraDetails() {
-      extras.forEach(extra => {
+      getVisibleExtras().forEach(extra => {
         const countEl = document.getElementById(`extra-count-${extra.id}`);
         const totalEl = document.getElementById(`extra-total-${extra.id}`);
         if (countEl) countEl.textContent = "—";
@@ -764,7 +769,7 @@
       let extrasTotal = 0;
       const extrasFormulaParts = [];
 
-      extras.forEach(extra => {
+      getVisibleExtras().forEach(extra => {
         const checkbox = document.getElementById(`extra-${extra.id}`);
         const manualInput = document.getElementById(`manual-${extra.id}`);
         const countEl = document.getElementById(`extra-count-${extra.id}`);
@@ -855,7 +860,7 @@
           const checkbox = document.getElementById(`extra-${extraId}`);
           const value = e.target.value.trim();
 
-          if (value !== "") {
+          if (value !== "" && checkbox) {
             checkbox.checked = true;
           }
 
