@@ -555,18 +555,23 @@
     ];
 
     const extras = [
-      { id: "coords", name: "Координаты X,Y", rate: 3.795 },
-      { id: "fias", name: "ФИАС", rate: 4.0 },
-      { id: "employees", name: "Количество сотрудников", rate: 4.3 },
-      { id: "dateAdded", name: "Дата добавления карточки в 2ГИС", rate: 3.3 },
-      { id: "providers", name: "Провайдеры", rate: 1.1 },
-      { id: "companyType", name: "Тип предприятия (опт/розн.)", rate: 1.1 },
-      { id: "entrances", name: "Количество подъездов", rate: 3.3 },
-      { id: "flats", name: "Количество квартир", rate: 1.1 },
-      { id: "floorsByParts", name: "Этажность по компонентам", rate: 1.1 },
-      { id: "wallMaterial", name: "Материал стен", rate: 1.1 },
-      { id: "maxFloors", name: "Этажность максимальная", rate: 3.3 },
-      { id: "serviceOrg", name: "Обслуживающие организации", rate: 3.3 }
+      { id: "inn", name: "ИНН и Юр. лицо", type: "fixed", rate: 4.3 },
+
+      { id: "coords", name: "Координаты X;Y", type: "tiered" },
+      { id: "fias", name: "ФИАС", type: "fixed", rate: 1.1 },
+
+      { id: "employees", name: "Количество сотрудников", type: "fixed", rate: 1.1 },
+      { id: "dateAdded", name: "Дата добавления карточки в 2ГИС", type: "fixed", rate: 1.1 },
+      { id: "providers", name: "Провайдеры", type: "fixed", rate: 1.1 },
+      { id: "companyType", name: "Тип предприятия (опт/розн.)", type: "fixed", rate: 1.1 },
+
+      { id: "entrances", name: "Количество подъездов", type: "fixed", rate: 3.3 },
+      { id: "flats", name: "Количество квартир", type: "fixed", rate: 3.3 },
+      { id: "floorsByParts", name: "Этажность по компонентам", type: "fixed", rate: 3.3 },
+      { id: "wallMaterial", name: "Материал стен", type: "fixed", rate: 3.3 },
+
+      { id: "maxFloors", name: "Этажность максимальная", type: "fixed", rate: 3.3 },
+      { id: "serviceOrg", name: "Обслуживающие организации", type: "fixed", rate: 3.3 }
     ];
 
     function formatCurrency(value) {
@@ -588,6 +593,30 @@
       return 5000;
     }
 
+    function getExtraRate(extra, rows) {
+      if (extra.type === "fixed") {
+        return extra.rate;
+      }
+
+      if (extra.id === "coords") {
+        return rows <= 25000 ? 3.3 : 1.1;
+      }
+
+      return 0;
+    }
+
+    function getExtraRateLabel(extra) {
+      if (extra.type === "fixed") {
+        return `+ ${formatCurrency(extra.rate)} за строку`;
+      }
+
+      if (extra.id === "coords") {
+        return `+ 3,30 ₽ до 25 000 строк · + 1,10 ₽ свыше 25 000`;
+      }
+
+      return `Тариф уточняется`;
+    }
+
     function renderExtras() {
       const container = document.getElementById("extrasList");
       container.innerHTML = "";
@@ -600,7 +629,7 @@
             <input type="checkbox" class="extra-checkbox" value="${item.id}">
             <span>
               ${item.name}
-              <span class="checkbox-meta">+ ${formatCurrency(item.rate)} за строку</span>
+              <span class="checkbox-meta">${getExtraRateLabel(item)}</span>
             </span>
           </label>
         `;
@@ -665,13 +694,17 @@
 
       const checkedExtras = Array.from(document.querySelectorAll(".extra-checkbox:checked"));
       let extrasRate = 0;
+      let extrasTotal = 0;
 
       checkedExtras.forEach(checkbox => {
         const extra = extras.find(item => item.id === checkbox.value);
-        if (extra) extrasRate += extra.rate;
+        if (extra) {
+          const rate = getExtraRate(extra, rows);
+          extrasRate += rate;
+          extrasTotal += rows * rate;
+        }
       });
 
-      const extrasTotal = rows * extrasRate;
       const subtotal = baseTotal + extrasTotal;
       const updatesCost = subtotal * updatesPercent;
       const totalBeforeMin = subtotal + updatesCost;
