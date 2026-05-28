@@ -420,7 +420,7 @@
 
           <div class="section">
             <div class="section-title">2. Обновления</div>
-            <div class="updates-grid" id="updatesGrid">
+            <div class="updates-grid">
               <label class="update-card active">
                 <input type="radio" name="updates" value="0" checked />
                 <div class="update-title">Без обновлений</div>
@@ -430,19 +430,19 @@
               <label class="update-card">
                 <input type="radio" name="updates" value="0.7" />
                 <div class="update-title">Ежемесячные</div>
-                <div class="update-sub">11 обновлений · +70% к стоимости</div>
+                <div class="update-sub">11 обновлений · +70% к стоимости выборки</div>
               </label>
 
               <label class="update-card">
                 <input type="radio" name="updates" value="0.5" />
                 <div class="update-title">Ежеквартальные</div>
-                <div class="update-sub">3 обновления · +50% к стоимости</div>
+                <div class="update-sub">3 обновления · +50% к стоимости выборки</div>
               </label>
 
               <label class="update-card">
                 <input type="radio" name="updates" value="0.3" />
                 <div class="update-title">Ежегодные</div>
-                <div class="update-sub">1 обновление · +30% к стоимости</div>
+                <div class="update-sub">1 обновление · +30% к стоимости выборки</div>
               </label>
             </div>
           </div>
@@ -457,9 +457,7 @@
             <div class="formula-box">
               <div class="formula-title">Расчет выполняется по формуле</div>
               <div class="formula-main">(база × строки) + (допы × строки) + обновления</div>
-              <div class="formula-example" id="formulaText">
-                — 
-              </div>
+              <div class="formula-example" id="formulaText">—</div>
             </div>
           </div>
         </div>
@@ -535,8 +533,7 @@
         </div>
 
         <div class="footer-note">
-          Основа собрана по прайсу от 01.02.2025. Если захотите, следующим сообщением я могу сразу добавить
-          точную разбивку по отдельным сценариям: организации / адресный план / POI.
+          Минимальный заказ по прайсу: 20 000 ₽ при расчете от 597 организаций.
         </div>
       </div>
     </div>
@@ -546,15 +543,15 @@
     const MIN_ROWS = 597;
 
     const baseTariffs = [
-      { min: 0, rate: 25.3, label: "менее 1 000" },
-      { min: 1000, rate: 16.445, label: "более 1 000" },
-      { min: 3000, rate: 13.11, label: "более 3 000" },
-      { min: 5000, rate: 10.12, label: "более 5 000" },
-      { min: 7000, rate: 8.625, label: "более 7 000" },
-      { min: 10000, rate: 7.59, label: "более 10 000" },
-      { min: 25000, rate: 6.325, label: "более 25 000" },
-      { min: 50000, rate: 5.06, label: "более 50 000" },
-      { min: 100000, rate: 3.795, label: "более 100 000" }
+      { min: 597, max: 999, rate: 33.50, label: "597–999" },
+      { min: 1000, max: 2999, rate: 22.00, label: "1000–2999" },
+      { min: 3000, max: 4999, rate: 18.00, label: "3000–4999" },
+      { min: 5000, max: 6999, rate: 16.00, label: "5000–6999" },
+      { min: 7000, max: 9999, rate: 15.00, label: "7000–9999" },
+      { min: 10000, max: 24999, rate: 13.00, label: "10000–24999" },
+      { min: 25000, max: 49999, rate: 11.50, label: "25000–49999" },
+      { min: 50000, max: 99999, rate: 9.00, label: "50000–99999" },
+      { min: 100000, max: Infinity, rate: 7.00, label: "100000+" }
     ];
 
     const extras = [
@@ -582,13 +579,7 @@
     }
 
     function getBaseRate(rows) {
-      let current = baseTariffs[0];
-      for (let i = 0; i < baseTariffs.length; i++) {
-        if (rows >= baseTariffs[i].min) {
-          current = baseTariffs[i];
-        }
-      }
-      return current;
+      return baseTariffs.find(tariff => rows >= tariff.min && rows <= tariff.max) || null;
     }
 
     function getMinimumOrder(rows) {
@@ -609,7 +600,7 @@
             <input type="checkbox" class="extra-checkbox" value="${item.id}">
             <span>
               ${item.name}
-              <span class="checkbox-meta">+ ${item.rate} ₽ за строку</span>
+              <span class="checkbox-meta">+ ${formatCurrency(item.rate)} за строку</span>
             </span>
           </label>
         `;
@@ -635,8 +626,10 @@
       document.getElementById("summaryUpdates").textContent = "—";
       document.getElementById("summaryBeforeMin").textContent = "—";
       document.getElementById("summaryFinal").textContent = "—";
-      document.getElementById("formulaText").textContent = "Расчет станет доступен после достижения минимального порога в 597 организаций.";
-      document.getElementById("minOrderHint").innerHTML = `Минимальный порог расчета: <strong>${MIN_ROWS}</strong> организаций.`;
+      document.getElementById("formulaText").textContent =
+        "Расчет станет доступен после достижения минимального порога в 597 организаций.";
+      document.getElementById("minOrderHint").innerHTML =
+        `Минимальный порог расчета: <strong>${MIN_ROWS}</strong> организаций.`;
     }
 
     function calculate() {
@@ -647,14 +640,14 @@
 
       if (rows < MIN_ROWS) {
         warning.style.display = "block";
+        warning.style.background = "var(--danger-bg)";
+        warning.style.borderColor = "var(--danger-border)";
+        warning.style.color = "var(--danger)";
+        warning.textContent = "Не достигнут минимальный порог — расчет доступен от 597 организаций.";
         resetSummaryForInvalid();
         return;
       } else {
-        warning.style.display = "block";
-        warning.textContent = "Минимальный порог достигнут.";
-        warning.style.background = "#ecfdf3";
-        warning.style.borderColor = "#bbf7d0";
-        warning.style.color = "#15803d";
+        warning.style.display = "none";
       }
 
       const updatesPercent = parseFloat(
@@ -662,11 +655,17 @@
       );
 
       const baseRateObj = getBaseRate(rows);
+      if (!baseRateObj) {
+        resetSummaryForInvalid();
+        return;
+      }
+
       const baseRate = baseRateObj.rate;
       const baseTotal = rows * baseRate;
 
       const checkedExtras = Array.from(document.querySelectorAll(".extra-checkbox:checked"));
       let extrasRate = 0;
+
       checkedExtras.forEach(checkbox => {
         const extra = extras.find(item => item.id === checkbox.value);
         if (extra) extrasRate += extra.rate;
@@ -711,14 +710,7 @@
       renderExtras();
       updateActiveCards();
 
-      document.getElementById("rows").addEventListener("input", function () {
-        const warning = document.getElementById("minWarning");
-        warning.style.background = "var(--danger-bg)";
-        warning.style.borderColor = "var(--danger-border)";
-        warning.style.color = "var(--danger)";
-        warning.textContent = "Не достигнут минимальный порог — расчет доступен от 597 организаций.";
-        calculate();
-      });
+      document.getElementById("rows").addEventListener("input", calculate);
 
       document.querySelectorAll('input[name="updates"]').forEach(input => {
         input.addEventListener("change", calculate);
