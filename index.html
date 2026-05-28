@@ -1,1 +1,447 @@
-<iframe id="map_592823884" frameborder="0" width="100%" height="600px" src="https://makemap.2gis.ru/widget?data=eJw1j11PgzAUhv_L8VKylEKhJdnFghGni2HeLNHsgowj1nSUlG66kf13z7p4Ls_7keedwLoWHbYV2j16p3GE4mMCfxoQCnjExh8cQgSDswM6H3SStTdXnT2f10dfiuVrydgqXx8X8zmZWxx3Tg9e255M9dPinr2s3jpVlWTkbPW9Hn31UJfqp-5CYGeNdWS9Y1zGn5w-52Xf4i8UMfu_SwTdDfIUEG6EtdW9Dw00RPeNDwMkn6k8yeMsEulMScUU31Jet1TIhbhsI9g3Q21HfWOcwDQeimCWKs_STCU8FzwCc5VDXZrLVIlYJVkmic_aPZVJaqWt1pjNF6J5D1_vDnj5A0SWaOU" sandbox="allow-modals allow-forms allow-scripts allow-same-origin allow-popups allow-top-navigation-by-user-activation"></iframe>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Калькулятор стоимости продукта</title>
+  <style>
+    :root {
+      --dgis-green: #19c37d;
+      --dgis-green-dark: #10a86b;
+      --dgis-green-soft: #e9fbf3;
+      --dgis-text: #1f2937;
+      --dgis-muted: #6b7280;
+      --dgis-border: #dfe7e3;
+      --dgis-bg: #f6faf8;
+      --white: #ffffff;
+      --danger: #e11d48;
+      --shadow: 0 10px 30px rgba(16, 24, 40, 0.08);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background: linear-gradient(180deg, #f4fbf7 0%, #eef8f2 100%);
+      color: var(--dgis-text);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 20px 48px;
+    }
+
+    .header {
+      margin-bottom: 28px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--white);
+      border: 1px solid var(--dgis-border);
+      border-radius: 999px;
+      padding: 8px 14px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+    }
+
+    .brand-badge {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--dgis-green);
+      box-shadow: 0 0 0 6px rgba(25, 195, 125, 0.15);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 34px;
+      line-height: 1.15;
+    }
+
+    .subtitle {
+      color: var(--dgis-muted);
+      font-size: 16px;
+      line-height: 1.5;
+      max-width: 850px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--white);
+      border: 1px solid var(--dgis-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+
+    .card h2 {
+      margin: 0 0 18px;
+      font-size: 22px;
+    }
+
+    .section {
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #edf2ef;
+    }
+
+    .section:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #111827;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .field:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      font-size: 14px;
+      color: #374151;
+      font-weight: 600;
+    }
+
+    input[type="number"],
+    select {
+      width: 100%;
+      border: 1px solid var(--dgis-border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 15px;
+      color: var(--dgis-text);
+      outline: none;
+      background: #fff;
+      transition: 0.2s ease;
+    }
+
+    input[type="number"]:focus,
+    select:focus {
+      border-color: var(--dgis-green);
+      box-shadow: 0 0 0 4px rgba(25, 195, 125, 0.15);
+    }
+
+    .checkbox-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .checkbox-item {
+      border: 1px solid var(--dgis-border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: #fafdfb;
+      transition: 0.2s ease;
+    }
+
+    .checkbox-item:hover {
+      border-color: #bce8d1;
+      background: var(--dgis-green-soft);
+    }
+
+    .checkbox-item label {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .checkbox-item input {
+      margin-top: 3px;
+      transform: scale(1.15);
+      accent-color: var(--dgis-green);
+    }
+
+    .checkbox-meta {
+      display: block;
+      margin-top: 4px;
+      color: var(--dgis-muted);
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .result-card {
+      position: sticky;
+      top: 20px;
+    }
+
+    .price-main {
+      background: linear-gradient(135deg, var(--dgis-green) 0%, var(--dgis-green-dark) 100%);
+      color: white;
+      border-radius: 18px;
+      padding: 22px;
+      margin-bottom: 18px;
+    }
+
+    .price-main .caption {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-bottom: 6px;
+    }
+
+    .price-main .value {
+      font-size: 38px;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+
+    .price-main .sub {
+      font-size: 14px;
+      opacity: 0.95;
+    }
+
+    .summary {
+      display: grid;
+      gap: 10px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px dashed #e5ece8;
+      font-size: 15px;
+    }
+
+    .summary-row:last-child {
+      border-bottom: 0;
+    }
+
+    .summary-row strong {
+      font-size: 16px;
+    }
+
+    .hint {
+      margin-top: 16px;
+      padding: 14px;
+      border-radius: 14px;
+      background: #fff8e6;
+      border: 1px solid #f6df9a;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #6b5a1a;
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      font-size: 12px;
+      color: var(--dgis-muted);
+      line-height: 1.5;
+    }
+
+    .pill {
+      display: inline-block;
+      background: var(--dgis-green-soft);
+      color: var(--dgis-green-dark);
+      border: 1px solid #bdebd2;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .btn-primary {
+      background: var(--dgis-green);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--dgis-green-dark);
+    }
+
+    .btn-secondary {
+      background: #eef7f2;
+      color: #135f43;
+      border: 1px solid #cae8d8;
+    }
+
+    .btn-secondary:hover {
+      background: #e3f5eb;
+    }
+
+    @media (max-width: 960px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .result-card {
+        position: static;
+      }
+
+      .checkbox-list {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="brand">
+        <span class="brand-badge"></span>
+        <span><strong>2ГИС</strong> · Калькулятор стоимости продукта</span>
+      </div>
+      <h1>Расчет стоимости выборки</h1>
+      <div class="subtitle">
+        Базовая версия калькулятора по прайсу: стоимость зависит от количества строк, выбранного пакета обновлений и дополнительных данных. 
+        Это демо-основа, которую можно дальше адаптировать под точные тарифные колонки и бизнес-логику.
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Параметры расчета</h2>
+
+        <div class="section">
+          <div class="section-title">1. Базовый продукт</div>
+
+          <div class="field">
+            <label for="rows">Количество строк</label>
+            <input type="number" id="rows" min="1" value="1000" />
+          </div>
+
+          <div class="field">
+            <label for="productType">Тип продукта</label>
+            <select id="productType">
+              <option value="org" selected>Выборка по организациям — стандартный набор данных</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">2. Обновления</div>
+
+          <div class="field">
+            <label for="updates">Пакет обновлений</label>
+            <select id="updates">
+              <option value="0" selected>Без обновлений</option>
+              <option value="0.7">Ежемесячные (11 обновлений) +70%</option>
+              <option value="0.5">Ежеквартальные (3 обновления) +50%</option>
+              <option value="0.3">Ежегодные (1 обновление) +30%</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">3. Дополнительные данные</div>
+          <div class="checkbox-list" id="extrasList"></div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" onclick="calculate()">Пересчитать</button>
+          <button class="btn btn-secondary" onclick="resetForm()">Сбросить</button>
+        </div>
+      </div>
+
+      <div class="card result-card">
+        <span class="pill">Предварительный расчет</span>
+
+        <div class="price-main">
+          <div class="caption">Итоговая стоимость</div>
+          <div class="value" id="totalPrice">0 ₽</div>
+          <div class="sub" id="pricePerRowSummary">—</div>
+        </div>
+
+        <div class="summary">
+          <div class="summary-row">
+            <span>Количество строк</span>
+            <span id="summaryRows">0</span>
+          </div>
+
+          <div class="summary-row">
+            <span>Базовая цена за строку</span>
+            <span id="summaryBaseRate">0 ₽</span>
+          </div>
+
+          <div class="summary-row">
+            <span>Стоимость базовой выборки</span>
+            <span id="summaryBaseTotal">0 ₽</span>
+          </div>
+
+          <div class="summary-row">
+            <span>Доп. данные за строку</span>
+            <span id="summaryExtrasRate">0 ₽</span>
+          </div>
+
+          <div class="summary-row">
+            <span>Стоимость доп. данных</span>
+            <span id="summaryExtrasTotal">0 ₽</span>
+          </div>
+
+          <div class="summary-row">
+            <span>Обновления</span>
+            <span id="summaryUpdates">Без обновлений</span>
+          </div>
+
+          <div class="summary-row">
+            <strong>Итого до минимального порога</strong>
+            <strong id="summaryBeforeMin">0 ₽</strong>
+          </div>
+
+          <div class="summary-row">
+            <strong>Итого к оплате</strong>
+            <strong id="summaryFinal">0 ₽</strong>
+          </div>
+        </div>
+
+        <div class="hint" id="minOrderHint">
+          Минимальный заказ будет применен автоматически по правилам прайса.
+        </div>
+
+        <div class="footer-note">
+          Основа расчета собрана по тексту прайса: диапазоны строк, коэффициенты обновлений и доп. атрибуты на строку.
+          Если нужно, следующим шаг
